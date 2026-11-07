@@ -1,0 +1,80 @@
+services:
+  hub-0001:
+    build:
+      context: ..
+      dockerfile: infra/hub.Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - SPORELINK_SERVER_ID=hub-0001
+      - SPORELINK_SERVER_NAME=Hub One
+      - SPORELINK_BASE_URL=http://hub-0001:5000
+      - SPORELINK_PEERS=http://hub-0002:5001
+    networks:
+      - sporelink
+
+  hub-0002:
+    build:
+      context: ..
+      dockerfile: infra/hub.Dockerfile
+    ports:
+      - "5001:5000"
+    environment:
+      - SPORELINK_SERVER_ID=hub-0002
+      - SPORELINK_SERVER_NAME=Hub Two
+      - SPORELINK_BASE_URL=http://hub-0002:5001
+      - SPORELINK_PEERS=http://hub-0001:5000
+    networks:
+      - sporelink
+
+  node-a:
+    build:
+      context: ..
+      dockerfile: infra/node.Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - node-a-data:/data
+    # Переопределяем ENTRYPOINT, чтобы передать аргументы (порт, папка, ID, Hub URL)
+    command: ["8080", "/data", "node-a", "http://hub-0001:5000"]
+    environment:
+      - ASPNETCORE_URLS= # очищаем, чтобы не мешало
+    depends_on:
+      - hub-0001
+    networks:
+      - sporelink
+
+  node-b:
+    build:
+      context: ..
+      dockerfile: infra/node.Dockerfile
+    ports:
+      - "8081:8081"
+    volumes:
+      - node-b-data:/data
+    command: ["8081", "/data", "node-b", "http://hub-0001:5000"]
+    depends_on:
+      - hub-0001
+    networks:
+      - sporelink
+
+  panel:
+    build:
+      context: ..
+      dockerfile: infra/panel.Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - hub-0001
+      - node-a
+      - node-b
+    networks:
+      - sporelink
+
+volumes:
+  node-a-data:
+  node-b-data:
+
+networks:
+  sporelink:
+    driver: bridge
