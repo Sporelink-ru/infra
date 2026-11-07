@@ -5,10 +5,12 @@ services:
       dockerfile: infra/hub.Dockerfile
     ports:
       - "5000:5000"
+    volumes:
+      - hub-0001-data:/app/data
     environment:
       - SPORELINK_SERVER_ID=hub-0001
       - SPORELINK_SERVER_NAME=Hub One
-      - SPORELINK_BASE_URL=http://hub-0001:5000
+      - SPORELINK_BASE_URL=http://localhost:5000
       - SPORELINK_PEERS=http://hub-0002:5001
     networks:
       - sporelink
@@ -19,10 +21,12 @@ services:
       dockerfile: infra/hub.Dockerfile
     ports:
       - "5001:5000"
+    volumes:
+      - hub-0002-data:/app/data
     environment:
       - SPORELINK_SERVER_ID=hub-0002
       - SPORELINK_SERVER_NAME=Hub Two
-      - SPORELINK_BASE_URL=http://hub-0002:5001
+      - SPORELINK_BASE_URL=http://localhost:5001
       - SPORELINK_PEERS=http://hub-0001:5000
     networks:
       - sporelink
@@ -74,6 +78,8 @@ services:
 volumes:
   node-a-data:
   node-b-data:
+  hub-0001-data:
+  hub-0002-data:
 
 networks:
   sporelink:
