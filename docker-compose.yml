@@ -1,17 +1,40 @@
 services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: sporelink
+      POSTGRES_PASSWORD: sporelink_secret
+      POSTGRES_DB: sporelink_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sporelink -d sporelink_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sporelink
+
   hub-0001:
     build:
       context: ..
       dockerfile: infra/hub.Dockerfile
     ports:
       - "5000:5000"
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      - hub-0001-data:/app/data
+      - hub-textures:/app/data
     environment:
       - SPORELINK_SERVER_ID=hub-0001
       - SPORELINK_SERVER_NAME=Hub One
       - SPORELINK_BASE_URL=http://localhost:5000
       - SPORELINK_PEERS=http://hub-0002:5001
+      - DB_CONNECTION_STRING=Host=postgres;Database=sporelink_db;Username=sporelink;Password=sporelink_secret
     networks:
       - sporelink
 
@@ -21,13 +44,18 @@ services:
       dockerfile: infra/hub.Dockerfile
     ports:
       - "5001:5000"
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      - hub-0002-data:/app/data
+      - hub-textures:/app/data
     environment:
       - SPORELINK_SERVER_ID=hub-0002
       - SPORELINK_SERVER_NAME=Hub Two
       - SPORELINK_BASE_URL=http://localhost:5001
       - SPORELINK_PEERS=http://hub-0001:5000
+      - DB_CONNECTION_STRING=Host=postgres;Database=sporelink_db;Username=sporelink;Password=sporelink_secret
     networks:
       - sporelink
 
@@ -39,10 +67,7 @@ services:
       - "8080:8080"
     volumes:
       - node-a-data:/data
-    # Переопределяем ENTRYPOINT, чтобы передать аргументы (порт, папка, ID, Hub URL)
     command: ["8080", "/data", "node-a", "http://hub-0001:5000"]
-    environment:
-      - ASPNETCORE_URLS= # очищаем, чтобы не мешало
     depends_on:
       - hub-0001
     networks:
@@ -76,10 +101,10 @@ services:
       - sporelink
 
 volumes:
+  pg-data:
+  hub-textures:
   node-a-data:
   node-b-data:
-  hub-0001-data:
-  hub-0002-data:
 
 networks:
   sporelink:
